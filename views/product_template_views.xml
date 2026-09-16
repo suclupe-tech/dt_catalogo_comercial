@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+
+    <!-- =========================================================
+         CONFIGURACIÓN COMERCIAL DEL PRODUCTO
+
+         Un mismo producto maestro puede utilizarse en:
+         - Tienda física
+         - Mayorista
+         - Tienda digital
+
+         Evitamos crear productos separados únicamente por canal.
+         ========================================================= -->
+
+    <record id="view_product_template_form_dt_catalogo_comercial"
+            model="ir.ui.view">
+
+        <field name="name">product.template.form.dt.catalogo.comercial</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+
+        <field name="arch" type="xml">
+
+            <xpath expr="//notebook" position="inside">
+
+                <page string="Configuración comercial"
+                      name="dt_commercial_configuration">
+
+                    <group>
+                        <group string="Canales disponibles">
+
+                            <field name="available_physical_store"/>
+                            <field name="available_wholesale"/>
+                            <field name="available_online"/>
+
+                        </group>
+
+                        <group string="Variantes operativas">
+
+                            <field name="use_operational_variants"/>
+                            
+                        </group>
+                    </group>
+
+                </page>
+
+            </xpath>
+
+        </field>
+
+    </record>
+
+</odoo>

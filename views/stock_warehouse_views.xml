@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+
+    <!-- =========================================================
+         EXTENSIÓN DEL FORMULARIO DE ALMACÉN
+
+         Agrega la configuración que define si el almacén trabaja:
+         - Por modelo
+         - Por variantes
+
+         Esta configuración será utilizada posteriormente por:
+         - POS
+         - Transferencias
+         - Inventario
+         - Canal digital
+         ========================================================= -->
+
+    <record id="view_warehouse_form_dt_catalogo_comercial" model="ir.ui.view">
+        <field name="name">stock.warehouse.form.dt.catalogo.comercial</field>
+        <field name="model">stock.warehouse</field>
+        <field name="inherit_id" ref="stock.view_warehouse"/>
+        <field name="arch" type="xml">
+
+            <!-- Lo colocamos dentro del formulario del almacén -->
+            <xpath expr="//sheet" position="inside">
+
+                <group string="Configuración comercial">
+
+                    <field name="product_control_mode"/>
+
+                </group>
+
+            </xpath>
+
+        </field>
+    </record>
+
+</odoo>

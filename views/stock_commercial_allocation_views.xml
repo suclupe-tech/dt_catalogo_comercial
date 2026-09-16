@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+
+    <!-- =========================================================
+         LISTA DE STOCK ASIGNADO A OFERTA
+         ========================================================= -->
+
+    <record id="view_dt_stock_commercial_allocation_list" model="ir.ui.view">
+        <field name="name">dt.stock.commercial.allocation.list</field>
+        <field name="model">dt.stock.commercial.allocation</field>
+        <field name="arch" type="xml">
+
+            <list string="Stock en oferta">
+                <field name="warehouse_id"/>
+                <field name="product_tmpl_id"/>
+                <field name="commercial_condition"/>
+                <field name="quantity"/>
+                <field name="active"/>
+            </list>
+
+        </field>
+    </record>
+
+
+    <!-- =========================================================
+         FORMULARIO DE ASIGNACIÓN
+         ========================================================= -->
+
+    <record id="view_dt_stock_commercial_allocation_form" model="ir.ui.view">
+        <field name="name">dt.stock.commercial.allocation.form</field>
+        <field name="model">dt.stock.commercial.allocation</field>
+        <field name="arch" type="xml">
+
+            <form string="Asignación de stock en oferta">
+
+                <sheet>
+
+    <!-- ===================================================== -->
+    <!-- INFORMACIÓN PRINCIPAL                                -->
+    <!-- ===================================================== -->
+    <group>
+
+        <!-- Asignación comercial -->
+        <group string="Asignación comercial">
+            <field name="warehouse_id"/>
+            <field name="product_tmpl_id"/>
+                            <field name="commercial_condition" readonly="1"/>
+                            <field name="quantity"/>
+                            <field name="active"/>
+                        </group>
+
+                        <!-- Resumen informativo de stock -->
+                        <group string="Resumen de stock">
+                            <field name="physical_stock" readonly="1"/>
+                            <field name="normal_commercial_stock" readonly="1"/>
+                        </group>
+
+                    </group>
+
+                    <!-- ===================================================== -->
+                    <!-- INFORMACIÓN ADICIONAL                                -->
+                    <!-- ===================================================== -->
+                    <group string="Información adicional">
+                        <field name="note"/>
+                    </group>
+
+                </sheet>
+
+            </form>
+
+        </field>
+    </record>
+
+
+    <!-- =========================================================
+         ACCIÓN
+         ========================================================= -->
+
+    <record id="action_dt_stock_commercial_allocation"
+            model="ir.actions.act_window">
+
+        <field name="name">Stock en oferta</field>
+        <field name="res_model">dt.stock.commercial.allocation</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+
+    <!-- =========================================================
+         MENÚ
+         ========================================================= -->
+
+    <menuitem id="menu_dt_stock_commercial_allocation"
+              name="Stock en oferta"
+              parent="stock.menu_stock_config_settings"
+              action="action_dt_stock_commercial_allocation"
+              sequence="90"/>
+
+</odoo>
