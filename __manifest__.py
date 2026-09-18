@@ -27,8 +27,11 @@ Objetivos iniciales:
     "depends": [
         "product",
         "stock",
+        "mail",
+        "pos_stock_restriccion_tienda",
     ],
     "data": [
+        "security/commercial_offer_security.xml",
         "security/ir.model.access.csv",
         "views/stock_warehouse_views.xml",
         "views/product_template_views.xml",

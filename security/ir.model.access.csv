@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_dt_stock_commercial_allocation_user,Asignacion comercial de stock,model_dt_stock_commercial_allocation,stock.group_stock_user,1,1,1,0
+access_dt_stock_commercial_allocation_admin,Administrador - Stock en oferta,model_dt_stock_commercial_allocation,base.group_system,1,1,1,0
+access_dt_stock_commercial_allocation_offer_supervisor,Supervisor de Ofertas - Stock en oferta,model_dt_stock_commercial_allocation,dt_catalogo_comercial.group_offer_supervisor,1,1,1,0

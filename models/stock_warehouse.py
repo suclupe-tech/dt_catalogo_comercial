@@ -74,21 +74,35 @@ class StockWarehouse(models.Model):
         return available_stock
 
     def _get_offer_allocated_quantity(self, product_tmpl):
-        """
-        Obtiene cuánto stock de este producto está destinado
-        específicamente a OFERTA en este almacén.
-        """
         self.ensure_one()
 
         if not product_tmpl:
             return 0.0
 
+        today = fields.Date.context_today(self)
+
+        # ============================================================
+        # SOLO CONTABILIZAR OFERTAS VIGENTES
+        #
+        # Una oferta reserva stock cuando:
+        # - Está activa.
+        # - No usa vigencia, o
+        # - La fecha actual está entre inicio y fin.
+        #
+        # Las ofertas futuras o vencidas dejan de reservar stock
+        # automáticamente para la venta regular.
+        # ============================================================
         allocations = self.env["dt.stock.commercial.allocation"].search(
             [
                 ("warehouse_id", "=", self.id),
                 ("product_tmpl_id", "=", product_tmpl.id),
                 ("commercial_condition", "=", "offer"),
                 ("active", "=", True),
+                "|",
+                ("use_validity", "=", False),
+                "&",
+                ("validity_date_from", "<=", today),
+                ("validity_date_to", ">=", today),
             ]
         )
 

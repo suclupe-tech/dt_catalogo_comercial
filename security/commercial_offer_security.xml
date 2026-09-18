@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+
+    <!-- =========================================================
+         PRIVILEGIO / ROL: GESTIÓN DE OFERTAS
+
+         Aparecerá en la ficha del usuario dentro de Supply Chain.
+         Es independiente de los roles de Inventario y POS.
+         ========================================================= -->
+    <record id="privilege_offer_management" model="res.groups.privilege">
+        <field name="name">Gestión de Ofertas</field>
+        <field name="category_id" ref="base.module_category_supply_chain"/>
+        <field name="sequence">30</field>
+        <field name="description">
+            Permite gestionar precios y cantidades destinadas a oferta
+            según los almacenes asignados al usuario.
+        </field>
+    </record>
+
+
+    <!-- =========================================================
+         GRUPO: SUPERVISOR DE OFERTAS
+
+         No hereda de Supervisor de Tiendas ni de Usuario Tienda
+         Restringido, para no afectar ventas POS, sesiones,
+         transferencias ni stock físico.
+         ========================================================= -->
+    <record id="group_offer_supervisor" model="res.groups">
+        <field name="name">Supervisor de Ofertas</field>
+        <field name="privilege_id"
+               ref="dt_catalogo_comercial.privilege_offer_management"/>
+        <field name="sequence">10</field>
+    </record>
+
+
+    <!-- =========================================================
+         REGLA: SOLO OFERTAS DE MIS ALMACENES PERMITIDOS
+         ========================================================= -->
+    <record id="rule_offer_supervisor_allowed_warehouses" model="ir.rule">
+        <field name="name">Ofertas solo de mis almacenes permitidos</field>
+
+        <field name="model_id"
+               ref="model_dt_stock_commercial_allocation"/>
+
+        <field name="domain_force">
+            [('warehouse_id', 'in', user.allowed_warehouse_ids.ids)]
+        </field>
+
+        <field name="groups"
+               eval="[(4, ref('dt_catalogo_comercial.group_offer_supervisor'))]"/>
+
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+</odoo>

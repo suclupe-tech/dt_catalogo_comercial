@@ -5,7 +5,6 @@
     <!-- =========================================================
          LISTA DE STOCK ASIGNADO A OFERTA
          ========================================================= -->
-
     <record id="view_dt_stock_commercial_allocation_list" model="ir.ui.view">
         <field name="name">dt.stock.commercial.allocation.list</field>
         <field name="model">dt.stock.commercial.allocation</field>
@@ -26,27 +25,35 @@
     <!-- =========================================================
          FORMULARIO DE ASIGNACIÓN
          ========================================================= -->
-
     <record id="view_dt_stock_commercial_allocation_form" model="ir.ui.view">
         <field name="name">dt.stock.commercial.allocation.form</field>
         <field name="model">dt.stock.commercial.allocation</field>
         <field name="arch" type="xml">
 
             <form string="Asignación de stock en oferta">
-
                 <sheet>
 
-    <!-- ===================================================== -->
-    <!-- INFORMACIÓN PRINCIPAL                                -->
-    <!-- ===================================================== -->
-    <group>
+                    <!-- =====================================================
+                         INFORMACIÓN PRINCIPAL
+                         ===================================================== -->
+                    <group>
 
-        <!-- Asignación comercial -->
-        <group string="Asignación comercial">
-            <field name="warehouse_id"/>
-            <field name="product_tmpl_id"/>
+                        <!-- Asignación comercial -->
+                        <group string="Asignación comercial">
+                            <field name="warehouse_id"/>
+                            <field name="product_tmpl_id"/>
                             <field name="commercial_condition" readonly="1"/>
                             <field name="quantity"/>
+                            <field name="offer_price"/>
+
+                            <!-- Vigencia opcional de la oferta -->
+                            <field name="use_validity"/>
+
+                            <field name="validity_date_from"
+                                invisible="not use_validity"/>
+
+                            <field name="validity_date_to"
+                                invisible="not use_validity"/>
                             <field name="active"/>
                         </group>
 
@@ -58,15 +65,15 @@
 
                     </group>
 
-                    <!-- ===================================================== -->
-                    <!-- INFORMACIÓN ADICIONAL                                -->
-                    <!-- ===================================================== -->
+                    <!-- =====================================================
+                         INFORMACIÓN ADICIONAL
+                         ===================================================== -->
                     <group string="Información adicional">
                         <field name="note"/>
                     </group>
 
                 </sheet>
-
+                <chatter/>
             </form>
 
         </field>
@@ -76,25 +83,32 @@
     <!-- =========================================================
          ACCIÓN
          ========================================================= -->
-
     <record id="action_dt_stock_commercial_allocation"
             model="ir.actions.act_window">
 
         <field name="name">Stock en oferta</field>
         <field name="res_model">dt.stock.commercial.allocation</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
 
     </record>
 
 
     <!-- =========================================================
-         MENÚ
-         ========================================================= -->
+        MENÚ STOCK EN OFERTA
 
+        Disponible únicamente para:
+        - Administrador
+        - Supervisor de Ofertas
+
+        Se ubica en Inventario > Operaciones para no otorgar
+        acceso a la configuración administrativa de Inventario.
+        ========================================================= -->
     <menuitem id="menu_dt_stock_commercial_allocation"
-              name="Stock en oferta"
-              parent="stock.menu_stock_config_settings"
-              action="action_dt_stock_commercial_allocation"
-              sequence="90"/>
+            name="Stock en oferta"
+            parent="stock.menu_stock_warehouse_mgmt"
+            action="action_dt_stock_commercial_allocation"
+            groups="base.group_system,dt_catalogo_comercial.group_offer_supervisor"
+            sequence="90"/>
 
 </odoo>

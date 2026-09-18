@@ -7,6 +7,11 @@ from odoo.exceptions import ValidationError
 class StockCommercialAllocation(models.Model):
     _name = "dt.stock.commercial.allocation"
     _description = "Asignación Comercial de Stock"
+
+    # Permite registrar en el chatter quién realizó
+    # modificaciones sobre la oferta.
+    _inherit = ["mail.thread", "mail.activity.mixin"]
+
     _order = "id desc"
 
     _rec_name = "name"
@@ -59,6 +64,7 @@ class StockCommercialAllocation(models.Model):
         required=True,
         index=True,
         ondelete="restrict",
+        tracking=True,
     )
 
     product_tmpl_id = fields.Many2one(
@@ -67,6 +73,7 @@ class StockCommercialAllocation(models.Model):
         required=True,
         index=True,
         ondelete="restrict",
+        tracking=True,
     )
 
     commercial_condition = fields.Selection(
@@ -83,11 +90,55 @@ class StockCommercialAllocation(models.Model):
         string="Cantidad en oferta",
         required=True,
         default=0.0,
+        tracking=True,
+    )
+
+    # ============================================================
+    # PRECIO DE OFERTA
+    # ============================================================
+
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Moneda",
+        related="warehouse_id.company_id.currency_id",
+        readonly=True,
+    )
+
+    offer_price = fields.Monetary(
+        string="Precio de oferta",
+        currency_field="currency_id",
+        default=0.0,
+        tracking=True,
+    )
+
+    # ============================================================
+    # VIGENCIA OPCIONAL DE LA OFERTA
+    # ============================================================
+
+    use_validity = fields.Boolean(
+        string="Usar vigencia",
+        default=False,
+        tracking=True,
+        help=(
+            "Si está activado, la oferta solo estará disponible "
+            "entre la fecha de inicio y la fecha de fin."
+        ),
+    )
+
+    validity_date_from = fields.Date(
+        string="Fecha de inicio",
+        tracking=True,
+    )
+
+    validity_date_to = fields.Date(
+        string="Fecha de fin",
+        tracking=True,
     )
 
     active = fields.Boolean(
         string="Activo",
         default=True,
+        tracking=True,
     )
 
     note = fields.Char(
@@ -118,12 +169,18 @@ class StockCommercialAllocation(models.Model):
         "product_tmpl_id",
         "quantity",
         "active",
+        "use_validity",
+        "validity_date_from",
+        "validity_date_to",
     )
     def _compute_stock_summary(self):
         """
-        Muestra el stock disponible real de Odoo y el stock
-        que queda disponible para venta normal después de
-        separar la cantidad destinada a oferta.
+        Muestra el stock físico disponible y el stock que queda
+        disponible para venta regular.
+
+        La cantidad asignada a oferta solo se descuenta cuando
+        la oferta está activa y, si usa vigencia, cuando la fecha
+        actual se encuentra dentro del rango configurado.
         """
 
         for record in self:
@@ -134,40 +191,48 @@ class StockCommercialAllocation(models.Model):
             if not record.warehouse_id or not record.product_tmpl_id:
                 continue
 
-            # Stock disponible real de Odoo
+            # ====================================================
+            # STOCK FÍSICO REAL
+            # ====================================================
             physical_stock = record.warehouse_id._get_available_stock_by_template(
                 record.product_tmpl_id
             )
 
-            # Mientras editamos el registro usamos directamente
-            # su cantidad asignada para que el cálculo se actualice
-            # inmediatamente en pantalla.
-            offer_stock = record.quantity if record.active else 0.0
+            # ====================================================
+            # DETERMINAR SI LA OFERTA RESERVA STOCK ACTUALMENTE
+            # ====================================================
+            offer_stock = 0.0
 
+            if record.active:
+
+                # Sin vigencia:
+                # la cantidad permanece reservada hasta agotarse.
+                if not record.use_validity:
+                    offer_stock = record.quantity
+
+                # Con vigencia:
+                # solo reserva durante el periodo configurado.
+                else:
+                    today = fields.Date.context_today(record)
+
+                    if (
+                        record.validity_date_from
+                        and record.validity_date_to
+                        and record.validity_date_from <= today
+                        and today <= record.validity_date_to
+                    ):
+                        offer_stock = record.quantity
+
+            # ====================================================
+            # RESUMEN
+            # ====================================================
             record.physical_stock = physical_stock
 
-            # Nunca mostramos stock comercial negativo
+            # Nunca mostrar stock comercial negativo.
             record.normal_commercial_stock = max(
                 physical_stock - offer_stock,
                 0.0,
             )
-
-    # ============================================================
-    # RESTRICCIONES SQL
-    # ============================================================
-
-    # Impide registrar cantidades negativas
-    _quantity_non_negative = models.Constraint(
-        "CHECK(quantity >= 0)",
-        "La cantidad asignada a oferta no puede ser negativa.",
-    )
-
-    # Impide duplicar la misma asignación de oferta
-    # para un producto dentro del mismo almacén
-    _unique_offer_allocation = models.Constraint(
-        "UNIQUE(warehouse_id, product_tmpl_id, commercial_condition)",
-        "Ya existe una asignación de oferta para este producto en este almacén.",
-    )
 
     # ============================================================
     # VALIDACIÓN DE STOCK DISPONIBLE
@@ -225,3 +290,46 @@ class StockCommercialAllocation(models.Model):
                         physical_stock,
                     )
                 )
+
+    # ============================================================
+    # VALIDAR VIGENCIA DE LA OFERTA
+    # ============================================================
+
+    @api.constrains(
+        "use_validity",
+        "validity_date_from",
+        "validity_date_to",
+    )
+    def _check_offer_validity_dates(self):
+        for record in self:
+
+            # Si no se usa vigencia, las fechas no son obligatorias.
+            if not record.use_validity:
+                continue
+
+            # Si se activa la vigencia, deben indicarse ambas fechas.
+            if not record.validity_date_from or not record.validity_date_to:
+                raise ValidationError(
+                    "Debe indicar la fecha de inicio y la fecha de fin " "de la oferta."
+                )
+
+            # La fecha final nunca puede ser anterior a la inicial.
+            if record.validity_date_to < record.validity_date_from:
+                raise ValidationError(
+                    "La fecha de fin de la oferta no puede ser anterior "
+                    "a la fecha de inicio."
+                )
+
+    # ============================================================
+    # RESTRICCIONES SQL
+    # ============================================================
+
+    _quantity_non_negative = models.Constraint(
+        "CHECK(quantity >= 0)",
+        "La cantidad asignada a oferta no puede ser negativa.",
+    )
+
+    _unique_offer_allocation = models.Constraint(
+        "UNIQUE(warehouse_id, product_tmpl_id, commercial_condition)",
+        "Ya existe una asignación de oferta para este producto en este almacén.",
+    )
