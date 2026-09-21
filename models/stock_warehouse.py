@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
 from odoo import fields, models
+from odoo.exceptions import ValidationError
 
 
 class StockWarehouse(models.Model):
@@ -11,28 +10,63 @@ class StockWarehouse(models.Model):
     #
     # MODELO:
     # El almacén trabaja comercialmente con el producto agrupado
-    # por modelo. Las variantes no forman parte de su operación
-    # cotidiana.
+    # por modelo. Ejemplo: Huánuco, Gamarra y Monarca.
     #
     # VARIANTE:
-    # El almacén necesita trabajar con talla y color de forma
-    # explícita, como ocurre con la Tienda Digital.
+    # El almacén trabaja exclusivamente con talla/color de forma
+    # explícita.
+    #
+    # MIXTO:
+    # El mismo almacén puede trabajar:
+    # - Venta unitaria: por variante.
+    # - Venta mayorista: por modelo.
+    #
+    # Ambos modos utilizan el mismo stock físico de Odoo.
     # ============================================================
     product_control_mode = fields.Selection(
         [
             ("model", "Por modelo"),
             ("variant", "Por variantes"),
+            ("mixed", "Mixto: modelo y variantes"),
         ],
         string="Control de productos",
         required=True,
         default="model",
         help=(
-            "Define cómo trabaja este almacén con los productos. "
-            "Los almacenes físicos normalmente trabajan por modelo, "
-            "mientras que un almacén digital puede requerir control "
-            "por talla y color."
+            "Define cómo trabaja comercialmente este almacén. "
+            "Por modelo agrupa el stock de todas las variantes. "
+            "Por variantes trabaja con talla y color de forma individual. "
+            "Mixto permite trabajar por variantes en venta unitaria "
+            "y por modelo en operaciones mayoristas."
         ),
     )
+
+    def _get_effective_product_control_mode(self, operation_mode=None):
+        """
+        Determina cómo debe trabajar una operación comercial
+        dentro del almacén.
+
+        - Almacén por modelo: siempre trabaja por modelo.
+        - Almacén por variantes: siempre trabaja por variantes.
+        - Almacén mixto: la operación debe indicar explícitamente
+        si trabajará por modelo o por variante.
+        """
+        self.ensure_one()
+
+        # Los almacenes con un único modo no necesitan
+        # que la operación indique nada adicional.
+        if self.product_control_mode in ("model", "variant"):
+            return self.product_control_mode
+
+        # En modo mixto no debemos asumir el comportamiento.
+        if operation_mode not in ("model", "variant"):
+            raise ValidationError(
+                "El almacén '%s' trabaja en modo mixto.\n\n"
+                "La operación debe indicar si trabajará "
+                "por modelo o por variante." % self.display_name
+            )
+
+        return operation_mode
 
     # ============================================================
     # CÁLCULO DE STOCK COMERCIAL
@@ -72,6 +106,76 @@ class StockWarehouse(models.Model):
             )
 
         return available_stock
+
+    def _get_available_stock_by_variant(self, product_variant):
+        """
+        Obtiene el stock disponible de una variante específica
+        dentro de este almacén.
+
+        No modifica el stock físico de Odoo.
+        Este método se utilizará en almacenes que necesiten
+        trabajar con talla/color de forma individual.
+        """
+        self.ensure_one()
+
+        if not product_variant or not self.lot_stock_id:
+            return 0.0
+
+        Quant = self.env["stock.quant"]
+
+        return Quant._get_available_quantity(
+            product_variant,
+            self.lot_stock_id,
+        )
+
+    def _get_available_stock_for_operation(
+        self,
+        product,
+        operation_mode=None,
+    ):
+        """
+        Obtiene el stock disponible según la forma de trabajo
+        efectiva del almacén y de la operación.
+
+        - Modelo:
+        suma el stock de todas las variantes.
+
+        - Variante:
+        consulta únicamente la variante indicada.
+
+        En almacenes mixtos, operation_mode es obligatorio.
+        """
+        self.ensure_one()
+
+        mode = self._get_effective_product_control_mode(operation_mode)
+
+        # ============================================================
+        # OPERACIÓN POR MODELO
+        # ============================================================
+        if mode == "model":
+
+            if product._name == "product.product":
+                product_tmpl = product.product_tmpl_id
+            elif product._name == "product.template":
+                product_tmpl = product
+            else:
+                raise ValidationError(
+                    "Para consultar stock por modelo debe indicar "
+                    "un producto o una plantilla de producto."
+                )
+
+            return self._get_available_stock_by_template(product_tmpl)
+
+        # ============================================================
+        # OPERACIÓN POR VARIANTE
+        # ============================================================
+        if product._name != "product.product":
+            raise ValidationError(
+                "Para una operación por variante debe indicar "
+                "una variante específica del producto."
+            )
+
+        return self._get_available_stock_by_variant(product)
 
     def _get_offer_allocated_quantity(self, product_tmpl):
         self.ensure_one()
