@@ -40,30 +40,52 @@ class ProductTemplate(models.Model):
     )
 
     # ============================================================
-    # CONTROL OPERATIVO DE VARIANTES
+    # ESTADO DEL STOCK POR MODELO
     #
-    # Las variantes reales siguen siendo administradas por Odoo
-    # mediante product.attribute y product.template.attribute.line.
-    #
-    # Este campo únicamente indica si el producto requiere que
-    # talla/color sean considerados en operaciones que necesiten
-    # detalle de variantes, por ejemplo:
-    #
-    # - Tienda Digital
-    # - Transferencia MODELO -> VARIANTE
-    #
-    # No crea variantes nuevas ni duplica atributos.
+    # Estos campos son informativos.
+    # Permiten saber si el producto ya cuenta con su variante
+    # técnica SIN CLASIFICAR.
     # ============================================================
 
-    use_operational_variants = fields.Boolean(
-        string="Usar variantes operativas",
-        default=False,
-        help=(
-            "Actívelo cuando este producto deba manejar sus variantes "
-            "de talla, color u otros atributos en operaciones que "
-            "requieran detalle por variante."
-        ),
+    has_unclassified_variant = fields.Boolean(
+        string="Stock por modelo habilitado",
+        compute="_compute_unclassified_stock_status",
     )
+
+    unclassified_variant_id = fields.Many2one(
+        "product.product",
+        string="Variante técnica",
+        compute="_compute_unclassified_stock_status",
+        readonly=True,
+    )
+
+    def _compute_unclassified_stock_status(self):
+        """Indica si el producto ya tiene su variante técnica."""
+        for template in self:
+            variants = template.with_context(
+                active_test=False
+            ).product_variant_ids.filtered(
+                lambda variant: (variant.active and variant.is_unclassified_variant)
+            )
+
+            technical_variant = variants[:1]
+
+            template.has_unclassified_variant = bool(technical_variant)
+            template.unclassified_variant_id = technical_variant
+
+    def action_enable_model_stock(self):
+        """
+        Crea y configura automáticamente la variante técnica
+        SIN CLASIFICAR para trabajar stock únicamente por modelo.
+        """
+        for template in self:
+            template._ensure_unclassified_variant()
+
+        # Recarga la ficha para mostrar inmediatamente el estado.
+        return {
+            "type": "ir.actions.client",
+            "tag": "reload",
+        }
 
     # ============================================================
     # STOCK SIN CLASIFICAR

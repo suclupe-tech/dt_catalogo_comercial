@@ -36,10 +36,21 @@
 
                         </group>
 
-                        <group string="Variantes operativas">
+                        <group string="Stock por modelo">
 
-                            <field name="use_operational_variants"/>
-                            
+                            <field name="has_unclassified_variant"
+                                readonly="1"/>
+
+                            <field name="unclassified_variant_id"
+                                readonly="1"
+                                invisible="not has_unclassified_variant"/>
+
+                            <button name="action_enable_model_stock"
+                                    string="Habilitar stock por modelo"
+                                    type="object"
+                                    class="oe_highlight"
+                                    invisible="has_unclassified_variant"/>
+
                         </group>
                     </group>
 
