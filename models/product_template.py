@@ -254,6 +254,14 @@ class ProductTemplate(models.Model):
         if exclusions_to_create:
             Exclusion.create(exclusions_to_create)
 
+        # Recalcular las variantes después de actualizar
+        # las exclusiones. Así Odoo elimina o archiva
+        # combinaciones híbridas como:
+        #
+        # Azul / SIN CLASIFICAR
+        # SIN CLASIFICAR / M
+        self._create_variant_ids()
+
         # --------------------------------------------------------
         # 4. Identificar la única variante formada completamente
         #    por valores SIN CLASIFICAR.
